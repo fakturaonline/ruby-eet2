@@ -1,0 +1,143 @@
+PATH
+  remote: .
+  specs:
+    ruby-eet2 (0.1.0)
+      base64 (>= 0.2, < 1)
+      bigdecimal (>= 3.1, < 5)
+      digest (>= 3.1, < 4)
+      net-http (>= 0.4, < 1)
+      nokogiri (>= 1.18, < 2)
+      openssl (>= 3.0, < 5)
+      securerandom (>= 0.3, < 1)
+      time (>= 0.3, < 1)
+      uri (>= 0.12, < 2)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    ast (2.4.3)
+    base64 (0.3.0)
+    bigdecimal (4.1.2)
+    bundler-audit (0.9.3)
+      bundler (>= 1.2.0)
+      thor (~> 1.0)
+    date (3.5.1)
+    diff-lcs (1.6.2)
+    digest (3.2.1)
+    docile (1.4.1)
+    json (2.21.1)
+    language_server-protocol (3.17.0.6)
+    lint_roller (1.1.0)
+    logger (1.7.0)
+    net-http (0.9.1)
+      uri (>= 0.11.1)
+    nokogiri (1.19.4-aarch64-linux-gnu)
+      racc (~> 1.4)
+    nokogiri (1.19.4-aarch64-linux-musl)
+      racc (~> 1.4)
+    nokogiri (1.19.4-arm-linux-gnu)
+      racc (~> 1.4)
+    nokogiri (1.19.4-arm-linux-musl)
+      racc (~> 1.4)
+    nokogiri (1.19.4-arm64-darwin)
+      racc (~> 1.4)
+    nokogiri (1.19.4-x86_64-darwin)
+      racc (~> 1.4)
+    nokogiri (1.19.4-x86_64-linux-gnu)
+      racc (~> 1.4)
+    nokogiri (1.19.4-x86_64-linux-musl)
+      racc (~> 1.4)
+    openssl (4.0.2)
+    parallel (1.28.0)
+    parser (3.3.12.0)
+      ast (~> 2.4.1)
+      racc
+    prism (1.9.0)
+    racc (1.8.1)
+    rainbow (3.1.1)
+    rake (13.4.2)
+    rbs (3.10.4)
+      logger
+      tsort
+    regexp_parser (2.12.0)
+    rspec (3.13.2)
+      rspec-core (~> 3.13.0)
+      rspec-expectations (~> 3.13.0)
+      rspec-mocks (~> 3.13.0)
+    rspec-core (3.13.6)
+      rspec-support (~> 3.13.0)
+    rspec-expectations (3.13.5)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.13.0)
+    rspec-mocks (3.13.8)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.13.0)
+    rspec-support (3.13.7)
+    rubocop (1.88.2)
+      json (~> 2.3)
+      language_server-protocol (~> 3.17.0.2)
+      lint_roller (~> 1.1.0)
+      parallel (>= 1.10)
+      parser (>= 3.3.0.2)
+      rainbow (>= 2.2.2, < 4.0)
+      regexp_parser (>= 2.9.3, < 3.0)
+      rubocop-ast (>= 1.49.0, < 2.0)
+      ruby-progressbar (~> 1.7)
+      unicode-display_width (>= 2.4.0, < 4.0)
+    rubocop-ast (1.50.0)
+      parser (>= 3.3.7.2)
+      prism (~> 1.7)
+    rubocop-performance (1.26.1)
+      lint_roller (~> 1.1)
+      rubocop (>= 1.75.0, < 2.0)
+      rubocop-ast (>= 1.47.1, < 2.0)
+    ruby-progressbar (1.13.0)
+    securerandom (0.4.1)
+    simplecov (0.22.0)
+      docile (~> 1.1)
+      simplecov-html (~> 0.11)
+      simplecov_json_formatter (~> 0.1)
+    simplecov-html (0.13.2)
+    simplecov_json_formatter (0.1.4)
+    standard (1.56.0)
+      language_server-protocol (~> 3.17.0.2)
+      lint_roller (~> 1.0)
+      rubocop (~> 1.88.0)
+      standard-custom (~> 1.0.0)
+      standard-performance (~> 1.8)
+    standard-custom (1.0.2)
+      lint_roller (~> 1.0)
+      rubocop (~> 1.50)
+    standard-performance (1.9.0)
+      lint_roller (~> 1.1)
+      rubocop-performance (~> 1.26.0)
+    thor (1.5.0)
+    time (0.4.2)
+      date
+    tsort (0.2.0)
+    unicode-display_width (3.2.0)
+      unicode-emoji (~> 4.1)
+    unicode-emoji (4.2.0)
+    uri (1.1.1)
+
+PLATFORMS
+  aarch64-linux-gnu
+  aarch64-linux-musl
+  arm-linux-gnu
+  arm-linux-musl
+  arm64-darwin
+  x86_64-darwin
+  x86_64-linux-gnu
+  x86_64-linux-musl
+
+DEPENDENCIES
+  bundler-audit (~> 0.9)
+  rake (~> 13.2)
+  rbs (~> 3.9)
+  rspec (~> 3.13)
+  ruby-eet2!
+  simplecov (~> 0.22)
+  standard (~> 1.50)
+
+BUNDLED WITH
+  4.0.16

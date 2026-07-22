@@ -1,0 +1,15 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "json"
+
+require_relative "../spec/e2e/support/playground_runner"
+
+begin
+  evidence = Eet2PlaygroundE2E.run
+  puts JSON.pretty_generate(evidence)
+  exit((evidence.fetch(:status) == "pass") ? 0 : 1)
+rescue Eet2PlaygroundE2E::Failure => error
+  warn JSON.generate(status: "fail", error: error.class.name, reason: error.message)
+  exit 1
+end

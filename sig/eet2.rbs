@@ -1,0 +1,419 @@
+module Eet2
+  VERSION: String
+
+  interface _Signer
+    def sign_sha256_rsa: (String bytes) -> String
+  end
+
+  interface _RequestBuilder
+    def call: (sale: Sale, first_submission: bool, verification_mode: bool) -> PreparedRequest
+  end
+
+  interface _ResponseParser
+    def call: (
+      xml: String,
+      expected_request_uuid: String
+    ) -> (Response::VerifiedReceipt | Response::UnsignedError)
+  end
+
+  interface _Transport
+    def call: (PreparedRequest prepared_request) -> (Transport::HttpResponse | Transport::Failure)
+  end
+
+  class Error < StandardError
+  end
+
+  class ValidationError < Error
+  end
+
+  class SchemaValidationError < ValidationError
+    attr_reader validation_errors: Array[String]
+    def initialize: (Array[untyped] validation_errors) -> void
+  end
+
+  class CredentialError < Error
+  end
+
+  class LegacyPkcs12Unsupported < CredentialError
+  end
+
+  class SigningError < Error
+  end
+
+  class RequestTooLarge < ValidationError
+  end
+
+  class InvalidResponse < Error
+  end
+
+  class MalformedResponse < InvalidResponse
+  end
+
+  class SignatureVerificationError < InvalidResponse
+  end
+
+  class CertificateVerificationError < InvalidResponse
+  end
+
+  class CorrelationError < InvalidResponse
+  end
+
+  class UnsupportedEnvironment < Error
+  end
+
+  class TransportConfigurationError < Error
+  end
+
+  class Sale < Data
+    attr_reader taxpayer_eic: String
+    attr_reader authorizing_taxpayer_eic: String?
+    attr_reader multiple_authorization: bool?
+    attr_reader evidence_unit_id: Integer
+    attr_reader register_id: String
+    attr_reader sequence_number: String
+    attr_reader occurred_at: Time
+    attr_reader amount_czk: untyped
+    attr_reader designated_drawdown_amount_czk: untyped
+    attr_reader drawdown_amount_czk: untyped
+
+    def initialize: (
+      taxpayer_eic: String,
+      evidence_unit_id: Integer,
+      register_id: String,
+      sequence_number: String,
+      occurred_at: Time,
+      amount_czk: untyped,
+      ?authorizing_taxpayer_eic: String?,
+      ?multiple_authorization: bool?,
+      ?designated_drawdown_amount_czk: untyped,
+      ?drawdown_amount_czk: untyped
+    ) -> void
+    def amount_wire_value: (untyped amount) -> String
+    def occurred_at_wire_value: () -> String
+  end
+
+  class PreparedRequest < Data
+    MAX_BYTES: Integer
+    UUID_V4_PATTERN: Regexp
+    SHA256_PATTERN: Regexp
+
+    attr_reader request_uuid: String
+    attr_reader sent_at: Time
+    attr_reader sale: Sale
+    attr_reader first_submission: bool
+    attr_reader verification_mode: bool
+    attr_reader xml: String
+    attr_reader request_sha256: String
+    attr_reader body_sha256: String
+    attr_reader certificate_sha256: String
+    attr_reader protocol_version: String
+    attr_reader schema_sha256: String
+
+    def initialize: (
+      request_uuid: String,
+      sent_at: Time,
+      sale: Sale,
+      first_submission: bool,
+      verification_mode: bool,
+      xml: String,
+      request_sha256: String,
+      body_sha256: String,
+      certificate_sha256: String,
+      protocol_version: String,
+      schema_sha256: String
+    ) -> void
+  end
+
+  class RequestIntegrityVerifier
+    def initialize: (?schema: Contracts::V4_1::Schema) -> void
+    def verify!: (PreparedRequest prepared_request) -> true
+  end
+
+  class LocalKeySigner
+    def initialize: (private_key: untyped) -> void
+    def sign_sha256_rsa: (String bytes) -> String
+    def matches_certificate?: (untyped certificate) -> bool
+  end
+
+  class Credential
+    attr_reader certificate: untyped
+    attr_reader chain: Array[untyped]
+    attr_reader signer: _Signer
+
+    def self.from_pem: (
+      certificate_pem: String,
+      private_key_pem: String,
+      ?private_key_password: String?,
+      ?chain_pems: Array[String]
+    ) -> Credential
+    def self.from_pkcs12: (
+      bytes: String,
+      password: String,
+      ?legacy_provider: (:forbid | :explicitly_allowed)
+    ) -> Credential
+    def initialize: (certificate: untyped, signer: _Signer, ?chain: Array[untyped]) -> void
+    def certificate_sha256: () -> String
+  end
+
+  class XmlSigner
+    SOAP_NAMESPACE: String
+    EET_NAMESPACE: String
+    WSSE_NAMESPACE: String
+    WSU_NAMESPACE: String
+    DS_NAMESPACE: String
+    EXCLUSIVE_C14N_NAMESPACE: String
+    EXCLUSIVE_C14N_ALGORITHM: String
+    RSA_SHA256_ALGORITHM: String
+    SHA256_ALGORITHM: String
+
+    def initialize: (certificate: untyped, signer: _Signer) -> void
+    def sign: (document: untyped, security: untyped, body: untyped, id_suffix: String) -> untyped
+    def canonicalize: (untyped node, inclusive_namespaces: Array[String]) -> String
+  end
+
+  module Response
+    class Warning < Data
+      attr_reader code: Integer
+      attr_reader message: String
+      def initialize: (code: Integer, message: String) -> void
+    end
+
+    class SignatureEvidence < Data
+      attr_reader certificate_sha256: String
+      attr_reader chain_sha256: Array[String]
+      attr_reader trust_policy_revision: String
+      def initialize: (certificate_sha256: String, chain_sha256: Array[String], trust_policy_revision: String) -> void
+    end
+
+    class VerifiedReceipt < Data
+      attr_reader request_uuid: String
+      attr_reader received_at: Time
+      attr_reader pok: String
+      attr_reader test: bool?
+      attr_reader warnings: Array[Warning]
+      attr_reader response_sha256: String
+      attr_reader signature_evidence: SignatureEvidence
+      attr_reader support_id: String?
+      def initialize: (
+        request_uuid: String,
+        received_at: Time,
+        pok: String,
+        test: bool?,
+        warnings: Array[Warning],
+        response_sha256: String,
+        signature_evidence: SignatureEvidence,
+        ?support_id: String?
+      ) -> void
+      def authenticated?: () -> true
+      def accepted?: () -> true
+    end
+
+    class UnsignedError < Data
+      attr_reader request_uuid: String?
+      attr_reader rejected_at: Time?
+      attr_reader code: Integer
+      attr_reader message: String
+      attr_reader test: bool?
+      attr_reader warnings: Array[Warning]
+      attr_reader response_sha256: String
+      attr_reader support_id: String?
+      def initialize: (
+        request_uuid: String?,
+        rejected_at: Time?,
+        code: Integer,
+        message: String,
+        test: bool?,
+        warnings: Array[Warning],
+        response_sha256: String,
+        ?support_id: String?
+      ) -> void
+      def authenticated?: () -> false
+      def accepted?: () -> false
+    end
+
+    class TransportFailure < Data
+      attr_reader certainty: :not_sent | :possibly_sent | :unknown
+      attr_reader kind: :connect_timeout | :dns | :tls | :connection | :timeout | :protocol | :response_too_large | :http_status
+      attr_reader http_status: Integer?
+      attr_reader support_id: String?
+      def initialize: (
+        certainty: (:not_sent | :possibly_sent | :unknown),
+        kind: (:connect_timeout | :dns | :tls | :connection | :timeout | :protocol | :response_too_large | :http_status),
+        http_status: Integer?,
+        support_id: String?
+      ) -> void
+      def authenticated?: () -> false
+      def accepted?: () -> false
+    end
+
+    class InvalidResponse < Data
+      attr_reader reason: :malformed_response | :signature_verification | :certificate_verification | :correlation | :schema_validation
+      attr_reader response_sha256: String
+      attr_reader http_status: Integer
+      attr_reader support_id: String?
+      def initialize: (
+        reason: (:malformed_response | :signature_verification | :certificate_verification | :correlation | :schema_validation),
+        response_sha256: String,
+        http_status: Integer,
+        support_id: String?
+      ) -> void
+      def authenticated?: () -> false
+      def accepted?: () -> false
+    end
+  end
+
+  module Transport
+    SOAP_ACTION: String
+    PLAYGROUND_ENDPOINT: String
+    PRODUCTION_ENDPOINT: String
+    ALLOWED_ENDPOINTS: Array[String]
+    MAX_RESPONSE_BYTES: Integer
+    SUPPORT_ID_PATTERN: Regexp
+    FAILURE_CERTAINTIES: Array[Symbol]
+    FAILURE_KINDS: Array[Symbol]
+
+    class HttpResponse < Data
+      attr_reader status: Integer
+      attr_reader headers: Hash[String, String]
+      attr_reader body: String
+      def initialize: (status: Integer, headers: Hash[String, String], body: String) -> void
+      def support_id: () -> String?
+    end
+
+    class Failure < Data
+      attr_reader certainty: :not_sent | :possibly_sent | :unknown
+      attr_reader kind: :connect_timeout | :dns | :tls | :connection | :timeout | :protocol | :response_too_large
+      def initialize: (
+        certainty: (:not_sent | :possibly_sent | :unknown),
+        kind: (:connect_timeout | :dns | :tls | :connection | :timeout | :protocol | :response_too_large)
+      ) -> void
+    end
+  end
+
+  class NetHttpTransport
+    DEFAULT_OPEN_TIMEOUT: Integer
+    DEFAULT_READ_TIMEOUT: Integer
+    DEFAULT_WRITE_TIMEOUT: Integer
+
+    def self.playground: (**untyped options) -> NetHttpTransport
+    def self.production: (**untyped options) -> NetHttpTransport
+    def initialize: (
+      endpoint: String,
+      ?open_timeout: Numeric,
+      ?read_timeout: Numeric,
+      ?write_timeout: Numeric,
+      ?max_response_bytes: Integer,
+      ?http_factory: untyped
+    ) -> void
+    def call: (PreparedRequest prepared_request) -> (Transport::HttpResponse | Transport::Failure)
+  end
+
+  class Client
+    def self.playground: (
+      credential: Credential,
+      ?transport: _Transport?,
+      ?clock: ^() -> Time,
+      ?receive_clock: ^() -> Time,
+      ?uuid_generator: ^() -> String,
+      **untyped transport_options
+    ) -> Client
+    def self.production: (
+      credential: Credential,
+      ?transport: _Transport?,
+      ?clock: ^() -> Time,
+      ?receive_clock: ^() -> Time,
+      ?uuid_generator: ^() -> String,
+      **untyped transport_options
+    ) -> Client
+    def initialize: (
+      request_builder: _RequestBuilder,
+      response_parser: _ResponseParser,
+      transport: _Transport
+    ) -> void
+    def prepare: (sale: Sale, first_submission: bool, ?verification_mode: bool) -> PreparedRequest
+    def transmit: (PreparedRequest prepared_request) -> (
+      Response::VerifiedReceipt |
+      Response::UnsignedError |
+      Response::TransportFailure |
+      Response::InvalidResponse
+    )
+  end
+
+  class TrustPolicy
+    ROOT_SHA256: String
+    INTERMEDIATE_SHA256: String
+    PRODUCTION_ROOT_SHA256: String
+    PRODUCTION_INTERMEDIATE_SHA256: String
+    PLAYGROUND_POLICY_OID: String
+    PRODUCTION_POLICY_OID: String
+    PLAYGROUND_ORGANIZATION: String
+    PLAYGROUND_ORGANIZATION_IDENTIFIER: String
+
+    attr_reader anchors: Array[untyped]
+    attr_reader environment: Symbol
+    attr_reader intermediates: Array[untyped]
+    attr_reader revision: String
+    def self.playground: () -> TrustPolicy
+    def self.production: () -> TrustPolicy
+    def initialize: (
+      environment: Symbol,
+      revision: String,
+      anchors: Array[untyped],
+      intermediates: Array[untyped],
+      policy_oid: String,
+      ?common_name_pattern: Regexp?
+    ) -> void
+    def validate_leaf_profile!: (untyped certificate) -> true
+    def anchor_sha256: () -> Array[String]
+    def intermediate_sha256: () -> Array[String]
+  end
+
+  class CertificateVerifier
+    def initialize: (trust_policy: TrustPolicy) -> void
+    def verify!: (certificate: untyped, at: Time) -> Response::SignatureEvidence
+  end
+
+  class XmlSignatureVerifier
+    def initialize: (trust_policy: TrustPolicy, ?certificate_verifier: CertificateVerifier) -> void
+    def verify!: (document: untyped, body: untyped, verification_time: Time) -> Response::SignatureEvidence
+  end
+
+  module Contracts
+    module V4_1
+      class Schema
+        SHA256: String
+        PATH: String
+
+        def initialize: (?path: String) -> void
+        def validate_payload!: (untyped payload) -> true
+      end
+
+      class RequestBuilder
+        PROTOCOL_VERSION: String
+
+        def initialize: (
+          credential: Credential,
+          ?schema: Schema,
+          ?uuid_generator: ^() -> String,
+          ?clock: ^() -> Time
+        ) -> void
+        def call: (sale: Sale, first_submission: bool, ?verification_mode: bool) -> PreparedRequest
+      end
+
+      class ResponseParser
+        MAX_RESPONSE_BYTES: Integer
+
+        def initialize: (
+          ?trust_policy: TrustPolicy,
+          ?schema: Schema,
+          ?signature_verifier: XmlSignatureVerifier?,
+          ?receive_clock: ^() -> Time
+        ) -> void
+        def call: (
+          xml: String,
+          expected_request_uuid: String
+        ) -> (Response::VerifiedReceipt | Response::UnsignedError)
+      end
+    end
+  end
+end

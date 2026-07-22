@@ -1,0 +1,38 @@
+# frozen_string_literal: true
+
+require "pathname"
+
+ROOT = Pathname(__dir__).join("..").realpath
+DOCUMENTS = %w[
+  README.md
+  SECURITY.md
+  CONTRIBUTING.md
+  docs/api.md
+  docs/architecture.md
+  docs/e2e.md
+].freeze
+PRIVATE_KEY_MARKER = /-----BEGIN (?:RSA |EC |ENCRYPTED )?PRIVATE KEY-----/
+RELATIVE_LINK = /\[[^\]]+\]\((?!https?:|mailto:|#)([^)#]+)(?:#[^)]+)?\)/
+
+DOCUMENTS.each do |relative_path|
+  path = ROOT.join(relative_path)
+  abort "missing documentation file: #{relative_path}" unless path.file?
+
+  content = path.read
+  abort "empty documentation file: #{relative_path}" if content.strip.empty?
+  abort "private key marker in documentation: #{relative_path}" if content.match?(PRIVATE_KEY_MARKER)
+
+  content.scan(RELATIVE_LINK).flatten.each do |link|
+    target = path.dirname.join(link).cleanpath
+    abort "broken relative link in #{relative_path}: #{link}" unless target.exist?
+  end
+end
+
+example = ROOT.join("examples/playground.rb")
+abort "missing Playground example" unless example.file?
+abort "Playground example contains a private key" if example.binread.match?(PRIVATE_KEY_MARKER)
+
+syntax_ok = system(Gem.ruby, "-c", example.to_s, out: File::NULL, err: File::NULL)
+abort "Playground example has invalid Ruby syntax" unless syntax_ok
+
+puts "Verified #{DOCUMENTS.length} documentation files, relative links, secret markers, and the Playground example syntax."
