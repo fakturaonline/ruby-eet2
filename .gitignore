@@ -1,0 +1,20 @@
+/.bundle/
+/.yardoc/
+/coverage/
+/docs/goals/
+/pkg/
+/tmp/
+/vendor/bundle/
+
+.DS_Store
+.env
+.env.*
+*.gem
+*.key
+*.p12
+*.pfx
+
+# Editors
+/.idea/
+/.vscode/
+*.swp

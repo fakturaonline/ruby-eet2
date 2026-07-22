@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+# Preserve frozen/captured wire bytes and exclude them from whitespace rewriting.
+data/official/** binary
+spec/fixtures/official/** binary
+spec/fixtures/responses/playground/accepted-live-2026-07-21.xml binary
+
+*.gem binary
+*.p12 binary
+*.pfx binary

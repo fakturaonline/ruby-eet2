@@ -1,0 +1,111 @@
+version: 1
+snapshot_date: "2026-07-21"
+authority: "Financial Administration of the Czech Republic"
+developer_page: "https://eet.gov.cz/pro-vyvojare/"
+allowed_source_hosts:
+  - eet.gov.cz
+  - www.ica.cz
+  - www.narodni-ca.gov.cz
+files:
+  - path: data/official/eet-v4_1/EETXMLSchema.xsd
+    source_url: https://eet.gov.cz/files/EETXMLSchema.xsd
+    upstream_version: "4.1"
+    fetched_on: "2026-07-21"
+    sha256: 83597d08520cbfab7e51145df9a765d5ca22e2f9a38644a468d695657c7a032a
+    packaged: true
+    purpose: Runtime request and response schema validation.
+    redistribution: Official public developer artifact; provenance retained here.
+
+  - path: data/official/eet-v4_1/EETServiceSOAP.wsdl
+    source_url: https://eet.gov.cz/files/EETServiceSOAP.wsdl
+    upstream_version: "4.1"
+    fetched_on: "2026-07-21"
+    sha256: df149c0bef4ac18c2a6e82116b6eb9bb17d29c055cb0821ac6d3885ec90faeb4
+    packaged: false
+    purpose: Contributor reference for the document/literal SOAP operation.
+    redistribution: Official public developer artifact; provenance retained here.
+
+  - path: data/official/trust/playground/ca_eet-root_cert-playground.crt
+    source_url: https://eet.gov.cz/files/ca_eet-root_cert-playground.crt
+    upstream_version: "Playground 2026 v1"
+    fetched_on: "2026-07-21"
+    sha256: c0257db7f2d9dde3f9413e904814a330cbd2efa41f2ab4ecd8f91f7c5f73f3b6
+    packaged: false
+    purpose: Reference CA root for Playground cash-register request credentials; not response-signature or TLS trust.
+    redistribution: Official public certificate; provenance retained here.
+
+  - path: data/official/trust/playground/ca_eet-sub_cert-playground.crt
+    source_url: https://eet.gov.cz/files/ca_eet-sub_cert-playground.crt
+    upstream_version: "Playground 2026 v1"
+    fetched_on: "2026-07-21"
+    sha256: 28182077cb77338070e209fe9e950481d01ecbc181dfc76ecd7985bd2e0f9046
+    packaged: false
+    purpose: Reference CA intermediate for Playground cash-register request credentials; not response-signature or TLS trust.
+    redistribution: Official public certificate; provenance retained here.
+
+  - path: data/official/response-trust/playground/ica-root-rsa-05-2022.pem
+    source_url: https://www.ica.cz/sites/default/files/download/2025/rca22_rsa.pem
+    upstream_version: "I.CA Root CA/RSA 05/2022"
+    fetched_on: "2026-07-21"
+    sha256: f72dc3232df2c9598f60c1bbc82f4bcc5acc80af73a60ed6eb3f6bd67ab473e2
+    certificate_der_sha256: d279c01a12e8dd9a6230e459faa447ceb336998477338c2ee4135c96737418eb
+    packaged: true
+    purpose: Trust anchor for the observed EET Playground response-signing chain; never used for TLS.
+    redistribution: Public I.CA root certificate from the issuer's official certificate repository.
+
+  - path: data/official/response-trust/playground/ica-public-rsa-06-2022.pem
+    source_url: https://www.ica.cz/sites/default/files/download/2025/pca22_rsa.pem
+    upstream_version: "I.CA Public CA/RSA 06/2022"
+    fetched_on: "2026-07-21"
+    sha256: db03fb10906d8cc357ef2d68f2f130d6a5381de3ca9a8cbf45216350ca695116
+    certificate_der_sha256: df5baf6d7e1a7d14e9911c5b8c676ec6ebcad9354a74f4ac7314e133e07a94de
+    packaged: true
+    purpose: Intermediate for the observed EET Playground response-signing chain; never used for TLS.
+    redistribution: Public I.CA intermediate certificate from the issuer's official certificate repository.
+
+  - path: data/official/response-trust/production/nca-root-rsa-10-2023.der
+    source_url: https://www.narodni-ca.gov.cz/Dokumenty/rsaRootCA_2023.der
+    upstream_version: "NCA Root CA/RSA 10/2023"
+    fetched_on: "2026-07-21"
+    sha256: d2d98e1b7af2d0e33276a33120d30863a66858d881eafd7400d09a4942630cb7
+    certificate_der_sha256: d2d98e1b7af2d0e33276a33120d30863a66858d881eafd7400d09a4942630cb7
+    packaged: true
+    purpose: Trust anchor for the documented EET production response-signing SSSVD/NCA chain; never used for TLS.
+    redistribution: Public NCA root certificate from the issuer's official certificate repository.
+
+  - path: data/official/response-trust/production/nca-subca2-rsa-12-2023.der
+    source_url: https://www.narodni-ca.gov.cz/Dokumenty/rsaSubCA2_2023.der
+    upstream_version: "NCA SubCA2/RSA 12/2023"
+    fetched_on: "2026-07-21"
+    sha256: ae36c864fc904b29cbc4b38a096364ae311ff1db544c5c064c12ec4bf9c5a8b3
+    certificate_der_sha256: ae36c864fc904b29cbc4b38a096364ae311ff1db544c5c064c12ec4bf9c5a8b3
+    packaged: true
+    purpose: Intermediate for the documented EET production response-signing SSSVD/NCA RSA technological-certificate profile; never used for TLS.
+    redistribution: Public NCA intermediate certificate from the issuer's official certificate repository.
+
+  - path: spec/fixtures/official/eet-v4_1/CZ00000019.eet.v4.req.xml
+    source_url: https://eet.gov.cz/files/CZ00000019.eet.v4.req.xml
+    upstream_version: "4.1"
+    fetched_on: "2026-07-21"
+    sha256: 4392b4ca0e6eb586c10b6f80d8946f5269f500a5b2b0d94fa7a092ace867ade5
+    packaged: false
+    purpose: Official signed request interoperability fixture.
+    redistribution: Official public developer sample; contains no private key.
+
+  - path: spec/fixtures/official/eet-v4_1/CZ683555118.eet.v4.req.xml
+    source_url: https://eet.gov.cz/files/CZ683555118.eet.v4.req.xml
+    upstream_version: "4.1"
+    fetched_on: "2026-07-21"
+    sha256: a77d28641603ffd85a3bd9eff580f554e5e822741cd0594d84b48b52e7874b75
+    packaged: false
+    purpose: Official signed delegated request interoperability fixture.
+    redistribution: Official public developer sample; contains no private key.
+
+  - path: spec/fixtures/official/eet-v4_1/CZ8551015704.eet.v4.req.xml
+    source_url: https://eet.gov.cz/files/CZ8551015704.eet.v4.req.xml
+    upstream_version: "4.1"
+    fetched_on: "2026-07-21"
+    sha256: a61b6ac6cc50b908d68550aa4981b91df0f5d3cbfe564b5d60b545ef70a06bd6
+    packaged: false
+    purpose: Official signed delegated request interoperability fixture.
+    redistribution: Official public developer sample; contains no private key.

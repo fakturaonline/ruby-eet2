@@ -1,0 +1,184 @@
+# frozen_string_literal: true
+
+require "digest"
+require "open3"
+require "pathname"
+require "rubygems/package"
+require "tmpdir"
+require "yaml"
+
+ROOT = Pathname(__dir__).join("..").realpath
+FORBIDDEN_NAME = /(?:\.(?:p12|pfx|key|zip)\z|(?:^|\/)(?:\.env|.*password.*|.*secret.*))/i
+PRIVATE_KEY_MARKER = /-----BEGIN (?:RSA |EC |ENCRYPTED )?PRIVATE KEY-----/
+SOURCE_MANIFEST = "data/source-manifest.yml"
+EXPECTED_BUILD_STDERR = ""
+SUBPROCESS_ENV = {
+  "BUNDLE_BIN_PATH" => nil,
+  "BUNDLE_GEMFILE" => nil,
+  "BUNDLER_SETUP" => nil,
+  "BUNDLER_VERSION" => nil,
+  "RUBYGEMS_GEMDEPS" => nil,
+  "RUBYLIB" => nil,
+  "RUBYOPT" => nil
+}.freeze
+BUILD_ENV = SUBPROCESS_ENV.merge("RUBYOPT" => "-W0").freeze
+
+Dir.mktmpdir("ruby-eet2-cz-package") do |temporary_directory|
+  gem_path = File.join(temporary_directory, "ruby-eet2-cz.gem")
+  build_stdout, build_stderr, build_status = Open3.capture3(
+    BUILD_ENV,
+    Gem.ruby,
+    "-S",
+    "gem",
+    "build",
+    "ruby-eet2-cz.gemspec",
+    "--output",
+    gem_path,
+    chdir: ROOT.to_s
+  )
+  abort [build_stdout, build_stderr].join unless build_status.success?
+  unless build_stderr == EXPECTED_BUILD_STDERR
+    abort "unexpected gem-build stderr:\n#{build_stderr.empty? ? "(empty)" : build_stderr}"
+  end
+
+  package = Gem::Package.new(gem_path)
+  files = package.contents.sort
+  specification = Gem::Specification.load(ROOT.join("ruby-eet2-cz.gemspec").to_s)
+  expected_files = specification.files.sort
+  abort "gem file list differs from the explicit gemspec allowlist" unless files == expected_files
+  abort "gem license must be exactly MIT" unless specification.licenses == ["MIT"]
+
+  forbidden_files = files.grep(FORBIDDEN_NAME)
+  abort "forbidden package filenames: #{forbidden_files.join(", ")}" unless forbidden_files.empty?
+
+  extracted_directory = File.join(temporary_directory, "extracted")
+  package.extract_files(extracted_directory)
+  files.each do |filename|
+    extracted_file = File.join(extracted_directory, filename)
+    abort "symlink found in package: #{filename}" if File.symlink?(extracted_file)
+    next unless File.file?(extracted_file)
+
+    content = File.binread(extracted_file)
+    abort "private key marker found in #{filename}" if content.match?(PRIVATE_KEY_MARKER)
+  end
+
+  manifest_path = File.join(extracted_directory, SOURCE_MANIFEST)
+  manifest = YAML.safe_load_file(manifest_path, permitted_classes: [], aliases: false)
+  manifest_entries = manifest.fetch("files")
+  packaged_entries = manifest_entries.select { |entry| entry.fetch("packaged") == true }
+  packaged_paths = packaged_entries.map { |entry| entry.fetch("path") }
+  abort "duplicate packaged paths in source manifest" unless packaged_paths.uniq == packaged_paths
+
+  official_package_files = files.grep(%r{\Adata/official/})
+  unless official_package_files.sort == packaged_paths.sort
+    abort "packaged official artifacts differ from source manifest"
+  end
+
+  packaged_entries.each do |entry|
+    relative_path = entry.fetch("path")
+    relative = Pathname(relative_path)
+    abort "invalid packaged source path: #{relative_path}" if relative.absolute? || relative.each_filename.include?("..")
+
+    extracted_path = Pathname(extracted_directory).join(relative).cleanpath
+    abort "missing packaged source: #{relative_path}" unless extracted_path.file?
+
+    extracted_root = Pathname(extracted_directory).realpath
+    resolved_path = extracted_path.realpath
+    abort "packaged source escaped extraction root: #{relative_path}" unless resolved_path.to_s.start_with?("#{extracted_root}/")
+
+    expected_sha256 = entry.fetch("sha256")
+    actual_sha256 = Digest::SHA256.file(resolved_path).hexdigest
+    abort "packaged source checksum mismatch: #{relative_path}" unless actual_sha256 == expected_sha256
+  end
+
+  gem_home = File.join(temporary_directory, "gem-home")
+  install_stdout, install_stderr, install_status = Open3.capture3(
+    SUBPROCESS_ENV,
+    Gem.ruby,
+    "-S",
+    "gem",
+    "install",
+    "--local",
+    "--ignore-dependencies",
+    "--no-document",
+    "--install-dir",
+    gem_home,
+    gem_path
+  )
+  abort [install_stdout, install_stderr].join unless install_status.success?
+
+  existing_paths = Gem.path.join(File::PATH_SEPARATOR)
+  environment = SUBPROCESS_ENV.merge(
+    "GEM_HOME" => gem_home,
+    "GEM_PATH" => [gem_home, existing_paths].join(File::PATH_SEPARATOR)
+  )
+  require_stdout, require_stderr, require_status = Open3.capture3(
+    environment,
+    Gem.ruby,
+    "-e",
+    <<~RUBY
+      require "eet2"
+      abort "missing version" unless Eet2::VERSION == "0.1.0"
+      [
+        Eet2::Credential,
+        Eet2::CertificateVerifier,
+        Eet2::Client,
+        Eet2::LocalKeySigner,
+        Eet2::NetHttpTransport,
+        Eet2::PreparedRequest,
+        Eet2::RequestIntegrityVerifier,
+        Eet2::Response::InvalidResponse,
+        Eet2::Response::TransportFailure,
+        Eet2::Response::VerifiedReceipt,
+        Eet2::Sale,
+        Eet2::XmlSigner,
+        Eet2::XmlSignatureVerifier,
+        Eet2::Contracts::V4_1::RequestBuilder,
+        Eet2::Contracts::V4_1::ResponseParser,
+        Eet2::Contracts::V4_1::Schema
+      ].each { |constant| abort "missing public API" unless constant.is_a?(Class) }
+      abort "missing transport endpoint" unless Eet2::Transport::PLAYGROUND_ENDPOINT.start_with?("https://")
+      abort "missing production endpoint" unless Eet2::Transport::PRODUCTION_ENDPOINT.start_with?("https://")
+      abort "packaged schema is unavailable" unless Eet2::Contracts::V4_1::Schema.new
+      abort "packaged response trust is unavailable" unless Eet2::TrustPolicy.playground
+      abort "packaged production response trust is unavailable" unless Eet2::TrustPolicy.production
+      gem_root = Gem.loaded_specs.fetch("ruby-eet2-cz").full_gem_path
+      load File.join(gem_root, "examples/playground.rb")
+      abort "packaged example is unavailable" unless defined?(Eet2PlaygroundExample)
+
+      example_key = OpenSSL::PKey::RSA.generate(2048)
+      example_certificate = OpenSSL::X509::Certificate.new
+      example_certificate.version = 2
+      example_certificate.serial = 1
+      example_certificate.subject = OpenSSL::X509::Name.parse("/C=CZ/CN=package-smoke")
+      example_certificate.issuer = example_certificate.subject
+      example_certificate.public_key = example_key.public_key
+      example_certificate.not_before = Time.utc(2026, 1, 1)
+      example_certificate.not_after = Time.utc(2030, 1, 1)
+      example_certificate.sign(example_key, OpenSSL::Digest.new("SHA256"))
+      example_credential = Eet2::Credential.new(
+        certificate: example_certificate,
+        signer: Eet2::LocalKeySigner.new(private_key: example_key)
+      )
+      example_transport = lambda do |_prepared_request|
+        Eet2::Transport::Failure.new(certainty: :not_sent, kind: :connect_timeout)
+      end
+      example_client = Eet2PlaygroundExample.build_client(
+        credential: example_credential,
+        transport: example_transport
+      )
+      example_prepared = example_client.prepare(
+        sale: Eet2PlaygroundExample.build_sale(
+          sequence_number: "package-smoke",
+          occurred_at: Time.utc(2027, 1, 1)
+        ),
+        first_submission: true
+      )
+      example_result = example_client.transmit(example_prepared)
+      abort "packaged example fake-transport smoke failed" unless example_result.is_a?(Eet2::Response::TransportFailure)
+    RUBY
+  )
+  abort [require_stdout, require_stderr].join unless require_status.success?
+
+  puts "Verified package allowlist, secret denylist, #{packaged_entries.length} official runtime artifacts, isolated install, and public API smoke test (#{files.length} files)."
+end

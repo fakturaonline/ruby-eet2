@@ -1,0 +1,73 @@
+# frozen_string_literal: true
+
+require "digest"
+require "openssl"
+require "pathname"
+require "uri"
+require "yaml"
+
+ROOT = Pathname(__dir__).join("..").realpath
+MANIFEST_PATH = ROOT.join("data/source-manifest.yml")
+SOURCE_PATTERNS = [
+  "data/official/eet-v4_1/*.{xsd,wsdl}",
+  "data/official/response-trust/playground/*.{cer,crt,pem}",
+  "data/official/response-trust/production/*.{cer,crt,der,pem}",
+  "data/official/trust/playground/*.{cer,crt,pem}",
+  "spec/fixtures/official/eet-v4_1/*.xml"
+].freeze
+REQUIRED_KEYS = %w[path source_url upstream_version fetched_on sha256 packaged purpose redistribution].freeze
+
+manifest = YAML.safe_load(MANIFEST_PATH.binread, aliases: false)
+errors = []
+entries = manifest.fetch("files")
+allowed_source_hosts = manifest.fetch("allowed_source_hosts")
+listed_paths = entries.map { |entry| entry.fetch("path") }
+
+entries.each do |entry|
+  missing_keys = REQUIRED_KEYS - entry.keys
+  errors << "#{entry["path"] || "entry"}: missing #{missing_keys.join(", ")}" unless missing_keys.empty?
+
+  relative = Pathname(entry.fetch("path"))
+  if relative.absolute? || relative.cleanpath.to_s.start_with?("../")
+    errors << "#{relative}: path escapes the repository"
+    next
+  end
+
+  file = ROOT.join(relative)
+  unless file.file? && !file.symlink?
+    errors << "#{relative}: missing, not a regular file, or a symlink"
+    next
+  end
+
+  actual = Digest::SHA256.file(file).hexdigest
+  errors << "#{relative}: SHA-256 #{actual} != #{entry.fetch("sha256")}" unless actual == entry.fetch("sha256")
+
+  if entry.key?("certificate_der_sha256")
+    certificate = OpenSSL::X509::Certificate.new(file.binread)
+    certificate_digest = OpenSSL::Digest::SHA256.hexdigest(certificate.to_der)
+    unless certificate_digest == entry.fetch("certificate_der_sha256")
+      errors << "#{relative}: certificate DER SHA-256 #{certificate_digest} != #{entry.fetch("certificate_der_sha256")}"
+    end
+  end
+
+  source_uri = URI.parse(entry.fetch("source_url"))
+  unless source_uri.scheme == "https" && allowed_source_hosts.include?(source_uri.host)
+    errors << "#{relative}: source_url must use HTTPS and an allowlisted official source host"
+  end
+rescue KeyError, OpenSSL::X509::CertificateError, URI::InvalidURIError => error
+  errors << "invalid manifest entry: #{error.message}"
+end
+
+actual_paths = SOURCE_PATTERNS.flat_map { |pattern| Dir.glob(ROOT.join(pattern)).map { |file| Pathname(file).relative_path_from(ROOT).to_s } }.sort
+unlisted = actual_paths - listed_paths
+missing = listed_paths - actual_paths
+errors << "unlisted official artifacts: #{unlisted.join(", ")}" unless unlisted.empty?
+errors << "manifest paths outside the source roots: #{missing.join(", ")}" unless missing.empty?
+errors << "duplicate manifest paths: #{listed_paths.tally.select { |_path, count| count > 1 }.keys.join(", ")}" unless listed_paths.uniq.length == listed_paths.length
+
+if errors.empty?
+  puts "Verified #{entries.length} official artifacts from snapshot #{manifest.fetch("snapshot_date")}."
+else
+  warn errors.join("\n")
+  exit 1
+end
