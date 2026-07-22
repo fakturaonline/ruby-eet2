@@ -24,7 +24,6 @@ GEM
     date (3.5.1)
     diff-lcs (1.6.2)
     digest (3.2.1)
-    docile (1.4.1)
     json (2.21.1)
     language_server-protocol (3.17.0.6)
     lint_roller (1.1.0)
@@ -56,8 +55,9 @@ GEM
     racc (1.8.1)
     rainbow (3.1.1)
     rake (13.4.2)
-    rbs (3.10.4)
+    rbs (4.0.3)
       logger
+      prism (>= 1.6.0)
       tsort
     regexp_parser (2.12.0)
     rspec (3.13.2)
@@ -93,12 +93,7 @@ GEM
       rubocop-ast (>= 1.47.1, < 2.0)
     ruby-progressbar (1.13.0)
     securerandom (0.4.1)
-    simplecov (0.22.0)
-      docile (~> 1.1)
-      simplecov-html (~> 0.11)
-      simplecov_json_formatter (~> 0.1)
-    simplecov-html (0.13.2)
-    simplecov_json_formatter (0.1.4)
+    simplecov (1.0.2)
     standard (1.56.0)
       language_server-protocol (~> 3.17.0.2)
       lint_roller (~> 1.0)
@@ -133,10 +128,10 @@ PLATFORMS
 DEPENDENCIES
   bundler-audit (~> 0.9)
   rake (~> 13.2)
-  rbs (~> 3.9)
+  rbs (~> 4.0)
   rspec (~> 3.13)
   ruby-eet2-cz!
-  simplecov (~> 0.22)
+  simplecov (~> 1.0)
   standard (~> 1.50)
 
 BUNDLED WITH
