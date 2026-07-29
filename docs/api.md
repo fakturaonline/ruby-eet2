@@ -123,6 +123,13 @@ response. The production constructor and offline contracts are implemented, but
 the official host does not yet resolve and production credentials are not scheduled
 for issuance until 2026-11-01. A real production E2E pass remains a release gate.
 
+### Concurrency
+
+Create one client per attempt and discard it afterwards. Sharing a `Client`,
+`Credential`, or signer between threads is not supported; see
+[Concurrency](architecture.md). All returned values (`PreparedRequest`, `Sale`, and
+every response type) are frozen and safe to read from any thread.
+
 ### prepare
 
 ```ruby

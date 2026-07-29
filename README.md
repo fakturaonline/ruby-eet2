@@ -123,12 +123,17 @@ gate; Playground success is not evidence of production readiness.
 - separate trust policies for Playground and Production;
 - immutable request and response values;
 - no implicit retries or redirect following;
-- bounded response bodies and sanitized diagnostic data;
+- bounded response bodies, bounded exchange evidence, and sanitized diagnostic data;
+- redacted inspection output: the signed XML never reaches a log through `inspect`;
 - explicit PKCS#12, PEM, and external-signer credential boundaries.
 
+The library does **not** guarantee that a `Client`, `Credential`, or signer is safe
+to share across threads. Build one client per attempt; see
+[Concurrency](docs/architecture.md).
+
 The host application remains responsible for deciding which payments enter EET,
-persistence, sequence allocation, retry scheduling, deadlines, secret storage,
-logging, metrics, and user-facing behavior.
+persistence, sequence allocation, retry scheduling, deadlines, response windows,
+secret storage, logging, metrics, and user-facing behavior.
 
 ## Documentation
 

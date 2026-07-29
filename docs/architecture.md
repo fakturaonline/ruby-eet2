@@ -85,6 +85,27 @@ head. It exists for non-200 and SOAP Fault bodies the gem refuses to parse, so
 support has a fixed-size, immutable trace without the gem ever retaining an
 unbounded response.
 
+## Concurrency
+
+The supported unit of concurrency is one attempt. Build a `Client` (and the
+`Credential` it wraps) per attempt, use it for exactly one `prepare` plus one
+`transmit`, and discard it. Independent per-attempt instances may run in parallel
+threads, processes, or workers; `spec/eet2/concurrency_spec.rb` locks that path by
+running parallel per-attempt clients and asserting unique request UUIDs and a
+request digest that matches each generated XML.
+
+Sharing a single `Client`, `Credential`, `Contracts::V4_1::Schema`, or signer across
+threads is **not supported and not claimed to be safe**. Those objects wrap mutable
+non-Ruby state — `Nokogiri::XML::Schema` (one instance shared by the response parser
+and the request integrity verifier), the canonicalizer, and `OpenSSL::PKey::RSA` in
+`LocalKeySigner` — whose thread safety depends on the linked libxml2 and OpenSSL
+builds. An ad-hoc smoke run over a shared client passing is absence of an immediate
+crash, not evidence, so the gem does not turn it into a promise.
+
+`PreparedRequest`, `Sale`, and every response value are deeply frozen and safe to
+read from any thread once constructed. `fork` after building a client is likewise
+outside the contract: re-create the client in the child.
+
 ## Package and source integrity
 
 The gemspec is an explicit allowlist. Build verification extracts the package,
