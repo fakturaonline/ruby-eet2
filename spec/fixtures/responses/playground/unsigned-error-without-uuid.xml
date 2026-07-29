@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v4="http://fs.gov.cz/eet/schema/v4">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <v4:Odpoved>
+      <v4:Hlavicka dat_odmit="2027-01-03T11:31:03Z"/>
+      <v4:Chyba kod="-1" test="true">Docasna technicka chyba zpracovani &#8211; odeslete zpravu pozdeji</v4:Chyba>
+    </v4:Odpoved>
+  </soapenv:Body>
+</soapenv:Envelope>

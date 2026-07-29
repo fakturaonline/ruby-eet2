@@ -41,7 +41,7 @@ RSpec.describe Eet2::PreparedRequest do
     prepared = described_class.new(
       **attributes.merge(xml: signed_xml, request_sha256: Digest::SHA256.hexdigest(signed_xml))
     )
-    renderings = [prepared.inspect, prepared.to_s, "#{prepared}", PP.pp(prepared, +"")]
+    renderings = [prepared.inspect, prepared.to_s, format("%s", prepared), PP.pp(prepared, +"")]
 
     renderings.each do |rendering|
       expect(rendering).not_to include("SignatureValue")

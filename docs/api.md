@@ -181,6 +181,13 @@ Playground receipt must also end in `-ff`; production rejects both `test` and th
 `-ff` suffix. Unsigned error responses are checked against the same environment
 marker rules but remain unauthenticated.
 
+`UnsignedError#request_uuid` is `nil` when the response omits `uuid_zpravy`, which
+the official XSD allows and the service uses for rejections that never reached
+message correlation. Correlation is verified only when the attribute is present, so
+an unsigned error is never sufficient to close an attempt on its own.
+`UnsignedError#message` is verbatim UTF-8 service text and is not ASCII-only; the
+live service returns an en dash in at least one message.
+
 `TransportFailure#certainty` is `not_sent`, `possibly_sent`, or `unknown`. The
 built-in transport uses `not_sent` only before request invocation and
 `possibly_sent` afterward. Never automatically repeat a `possibly_sent` attempt.

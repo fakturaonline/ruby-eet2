@@ -56,6 +56,38 @@ RSpec.describe Eet2::Contracts::V4_1::ResponseParser do
     expect(result.warnings.map(&:code)).to eq([1])
   end
 
+  it "accepts a documented error response that carries dat_odmit and no uuid_zpravy" do
+    xml = PROJECT_ROOT.join("spec/fixtures/responses/playground/unsigned-error-without-uuid.xml").binread
+
+    result = parser.call(xml: xml, expected_request_uuid: unsigned_error_uuid)
+
+    expect(result).to be_a(Eet2::Response::UnsignedError)
+    expect(result).not_to be_authenticated
+    expect(result.request_uuid).to be_nil
+    expect(result.rejected_at).to eq(Time.utc(2027, 1, 3, 11, 31, 3))
+    expect(result.code).to eq(-1)
+    expect(result.response_sha256).to eq(Digest::SHA256.hexdigest(xml))
+  end
+
+  it "preserves non-ASCII error text such as the en dash returned by the live service" do
+    xml = PROJECT_ROOT.join("spec/fixtures/responses/playground/unsigned-error-without-uuid.xml").binread
+
+    result = parser.call(xml: xml, expected_request_uuid: unsigned_error_uuid)
+
+    expect(result.message).to include("–")
+    expect(result.message).to eq("Docasna technicka chyba zpracovani – odeslete zpravu pozdeji")
+    expect(result.message.encoding).to eq(Encoding::UTF_8)
+    expect(result.message).to be_valid_encoding
+  end
+
+  it "still correlates an error response that does carry uuid_zpravy" do
+    xml = PROJECT_ROOT.join("spec/fixtures/responses/playground/unsigned-error.xml").binread
+
+    expect do
+      parser.call(xml: xml, expected_request_uuid: "03965780-6457-4842-bd80-5f9195c0b8c8")
+    end.to raise_error(Eet2::CorrelationError, /does not match/)
+  end
+
   it "rejects UUID mismatch after cryptographic verification" do
     expect do
       parser.call(xml: accepted_xml, expected_request_uuid: "123e4567-e89b-42d3-a456-426614174000")

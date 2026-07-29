@@ -15,3 +15,9 @@ the official I.CA chain pinned by the versioned Playground trust policy.
 `unsigned-error.xml` is a deterministic local fixture matching the official XSD's
 documented unsigned `Chyba` profile. It is not a captured server response and must
 never be treated as authenticated evidence.
+
+`unsigned-error-without-uuid.xml` is a deterministic local fixture for the second
+documented error shape: `uuid_zpravy` is optional in `OdpovedHlavickaType`, a
+rejection carries `dat_odmit` instead of `dat_prij`, and the error text is not
+ASCII-only — the live service returns an en dash (`&#8211;`) in it. It is likewise
+not a captured server response and never authenticated evidence.
