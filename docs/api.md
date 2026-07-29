@@ -155,9 +155,35 @@ built-in transport uses `not_sent` only before request invocation and
 oversized-response, and HTTP-status failures.
 
 `InvalidResponse#reason` is a stable symbol for malformed XML, schema,
-signature, certificate, or correlation failure. Raw exception messages and raw
-response bodies are not returned. The response SHA-256 and a sanitized support ID
-remain available for diagnostics.
+signature, certificate, or correlation failure. Raw exception messages are not
+returned. The response SHA-256 and a sanitized support ID remain available for
+diagnostics.
+
+### Exchange evidence
+
+Every result produced from an actual HTTP exchange carries an immutable
+`Response::ExchangeEvidence` in `#exchange_evidence`:
+
+| Field | Meaning |
+|---|---|
+| `http_status` | the observed status |
+| `response_sha256` | SHA-256 of the complete received body |
+| `response_bytesize` | size of the complete received body |
+| `response_body_head` | first 4 KiB of the body, binary encoded and frozen |
+| `truncated?` | whether the body was longer than the retained head |
+
+It is populated for a verified receipt, an unsigned error, an invalid response,
+**and** for a non-200 status whose body the gem deliberately refuses to parse —
+including a SOAP Fault. It is `nil` only when no response was received at all
+(`TransportFailure` with a network `kind`).
+
+The head is bounded on purpose: the transport already caps a response at
+`Transport::MAX_RESPONSE_BYTES` (256 KiB) and the evidence retains at most
+`Response::EXCHANGE_EVIDENCE_MAX_HEAD_BYTES` (4 KiB) of it, so an audit trail costs
+a known amount of memory. The head is a byte prefix, so it may end mid-character
+and must never be parsed as a document; treat it as opaque support evidence.
+Persisting or exposing it is the host's decision, subject to the host's own
+retention policy.
 
 ## Alternative transport
 

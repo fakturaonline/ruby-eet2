@@ -57,6 +57,9 @@ RSpec.describe Eet2::Client do
     expect(result).to be_accepted
     expect(result).to be_authenticated
     expect(result.support_id).to eq("trace-accepted")
+    expect(result.exchange_evidence.http_status).to eq(200)
+    expect(result.exchange_evidence.response_sha256).to eq(result.response_sha256)
+    expect(result.exchange_evidence.response_bytesize).to eq(live_response.bytesize)
   end
 
   it "returns an explicitly unauthenticated business error received over HTTP 200" do
@@ -103,12 +106,15 @@ RSpec.describe Eet2::Client do
     expect(result.response_sha256).to eq(Digest::SHA256.hexdigest(body))
     expect(result.http_status).to eq(200)
     expect(result.support_id).to eq("trace-invalid")
+    expect(result.exchange_evidence.response_body_head).to eq(body)
+    expect(result.exchange_evidence.response_sha256).to eq(result.response_sha256)
     expect(result).not_to be_accepted
     expect(result).not_to be_authenticated
   end
 
   it "classifies non-200 responses as possibly sent without parsing their bodies" do
     parser = ->(**) { raise "must not parse" }
+    body = "<html/>"
     client = described_class.new(
       request_builder: ->(**) {},
       response_parser: parser,
@@ -116,7 +122,7 @@ RSpec.describe Eet2::Client do
         Eet2::Transport::HttpResponse.new(
           status: 503,
           headers: {"X-Global-Transaction-ID" => "trace-503"},
-          body: "<html/>"
+          body: body
         )
       end
     )
@@ -128,6 +134,52 @@ RSpec.describe Eet2::Client do
     expect(result.kind).to eq(:http_status)
     expect(result.http_status).to eq(503)
     expect(result.support_id).to eq("trace-503")
+    expect(result.exchange_evidence.http_status).to eq(503)
+    expect(result.exchange_evidence.response_sha256).to eq(Digest::SHA256.hexdigest(body))
+    expect(result.exchange_evidence.response_bytesize).to eq(body.bytesize)
+    expect(result.exchange_evidence.response_body_head).to eq(body)
+    expect(result.exchange_evidence).not_to be_truncated
+  end
+
+  it "retains bounded evidence of an unparsed SOAP Fault far larger than the retained head" do
+    fault = <<~XML
+      <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+        <soapenv:Body><soapenv:Fault><faultcode>soapenv:Server</faultcode>
+        <faultstring>#{"internal failure detail " * 1_000}</faultstring>
+        </soapenv:Fault></soapenv:Body>
+      </soapenv:Envelope>
+    XML
+    client = described_class.new(
+      request_builder: ->(**) {},
+      response_parser: ->(**) { raise "must not parse" },
+      transport: lambda do |_request|
+        Eet2::Transport::HttpResponse.new(status: 500, headers: {}, body: fault)
+      end
+    )
+
+    result = client.transmit(prepared_request)
+    evidence = result.exchange_evidence
+
+    expect(fault.bytesize).to be > Eet2::Response::EXCHANGE_EVIDENCE_MAX_HEAD_BYTES
+    expect(result).to be_a(Eet2::Response::TransportFailure)
+    expect(evidence.response_sha256).to eq(Digest::SHA256.hexdigest(fault))
+    expect(evidence.response_bytesize).to eq(fault.bytesize)
+    expect(evidence.response_body_head.bytesize).to eq(Eet2::Response::EXCHANGE_EVIDENCE_MAX_HEAD_BYTES)
+    expect(evidence.response_body_head).to include("soapenv:Fault")
+    expect(evidence).to be_truncated
+  end
+
+  it "keeps no response evidence when nothing was received" do
+    client = described_class.new(
+      request_builder: ->(**) {},
+      response_parser: ->(**) {},
+      transport: ->(_) { Eet2::Transport::Failure.new(certainty: :possibly_sent, kind: :timeout) }
+    )
+
+    result = client.transmit(prepared_request)
+
+    expect(result.exchange_evidence).to be_nil
+    expect(result.http_status).to be_nil
   end
 
   it "preserves the transport certainty without retrying" do

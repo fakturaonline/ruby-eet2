@@ -175,6 +175,26 @@ module Eet2
   end
 
   module Response
+    EXCHANGE_EVIDENCE_MAX_HEAD_BYTES: Integer
+
+    def self.copy_support_id: (String? value) -> String?
+    def self.copy_exchange_evidence: (ExchangeEvidence? value) -> ExchangeEvidence?
+
+    class ExchangeEvidence < Data
+      attr_reader http_status: Integer
+      attr_reader response_sha256: String
+      attr_reader response_bytesize: Integer
+      attr_reader response_body_head: String
+      def self.from_http_response: (Transport::HttpResponse response) -> ExchangeEvidence
+      def initialize: (
+        http_status: Integer,
+        response_sha256: String,
+        response_bytesize: Integer,
+        response_body_head: String
+      ) -> void
+      def truncated?: () -> bool
+    end
+
     class Warning < Data
       attr_reader code: Integer
       attr_reader message: String
@@ -197,6 +217,7 @@ module Eet2
       attr_reader response_sha256: String
       attr_reader signature_evidence: SignatureEvidence
       attr_reader support_id: String?
+      attr_reader exchange_evidence: ExchangeEvidence?
       def initialize: (
         request_uuid: String,
         received_at: Time,
@@ -205,7 +226,8 @@ module Eet2
         warnings: Array[Warning],
         response_sha256: String,
         signature_evidence: SignatureEvidence,
-        ?support_id: String?
+        ?support_id: String?,
+        ?exchange_evidence: ExchangeEvidence?
       ) -> void
       def authenticated?: () -> true
       def accepted?: () -> true
@@ -220,6 +242,7 @@ module Eet2
       attr_reader warnings: Array[Warning]
       attr_reader response_sha256: String
       attr_reader support_id: String?
+      attr_reader exchange_evidence: ExchangeEvidence?
       def initialize: (
         request_uuid: String?,
         rejected_at: Time?,
@@ -228,7 +251,8 @@ module Eet2
         test: bool?,
         warnings: Array[Warning],
         response_sha256: String,
-        ?support_id: String?
+        ?support_id: String?,
+        ?exchange_evidence: ExchangeEvidence?
       ) -> void
       def authenticated?: () -> false
       def accepted?: () -> false
@@ -239,11 +263,13 @@ module Eet2
       attr_reader kind: :connect_timeout | :dns | :tls | :connection | :timeout | :protocol | :response_too_large | :http_status
       attr_reader http_status: Integer?
       attr_reader support_id: String?
+      attr_reader exchange_evidence: ExchangeEvidence?
       def initialize: (
         certainty: (:not_sent | :possibly_sent | :unknown),
         kind: (:connect_timeout | :dns | :tls | :connection | :timeout | :protocol | :response_too_large | :http_status),
         http_status: Integer?,
-        support_id: String?
+        support_id: String?,
+        ?exchange_evidence: ExchangeEvidence?
       ) -> void
       def authenticated?: () -> false
       def accepted?: () -> false
@@ -254,11 +280,13 @@ module Eet2
       attr_reader response_sha256: String
       attr_reader http_status: Integer
       attr_reader support_id: String?
+      attr_reader exchange_evidence: ExchangeEvidence?
       def initialize: (
         reason: (:malformed_response | :signature_verification | :certificate_verification | :correlation | :schema_validation),
         response_sha256: String,
         http_status: Integer,
-        support_id: String?
+        support_id: String?,
+        ?exchange_evidence: ExchangeEvidence?
       ) -> void
       def authenticated?: () -> false
       def accepted?: () -> false

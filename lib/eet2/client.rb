@@ -103,7 +103,10 @@ module Eet2
         xml: transport_result.body,
         expected_request_uuid: prepared_request.request_uuid
       )
-      parsed.with(support_id: transport_result.support_id)
+      parsed.with(
+        support_id: transport_result.support_id,
+        exchange_evidence: Response::ExchangeEvidence.from_http_response(transport_result)
+      )
     rescue InvalidResponse, SchemaValidationError => error
       invalid_response(transport_result, error)
     end
@@ -130,7 +133,8 @@ module Eet2
         certainty: :possibly_sent,
         kind: :http_status,
         http_status: result.status,
-        support_id: result.support_id
+        support_id: result.support_id,
+        exchange_evidence: Response::ExchangeEvidence.from_http_response(result)
       )
     end
 
@@ -141,7 +145,8 @@ module Eet2
         reason: invalid_response_reason(error),
         response_sha256: Digest::SHA256.hexdigest(result.body),
         http_status: result.status,
-        support_id: result.support_id
+        support_id: result.support_id,
+        exchange_evidence: Response::ExchangeEvidence.from_http_response(result)
       )
     end
 
