@@ -60,6 +60,30 @@ module Eet2
       )
     end
 
+    # The signed XML is a bearer artifact: it carries the taxpayer signature and
+    # the embedded certificate. Rails logs, Sidekiq job arguments, and exception
+    # reporters all call #inspect, so the default Data inspection is replaced by
+    # non-sensitive metadata only.
+    def inspect
+      "#<data Eet2::PreparedRequest " \
+        "request_uuid=#{request_uuid.inspect}, " \
+        "sent_at=#{sent_at.iso8601.inspect}, " \
+        "first_submission=#{first_submission}, " \
+        "verification_mode=#{verification_mode}, " \
+        "protocol_version=#{protocol_version.inspect}, " \
+        "xml_bytesize=#{xml.bytesize}, " \
+        "request_sha256=#{request_sha256.inspect}, " \
+        "body_sha256=#{body_sha256.inspect}, " \
+        "certificate_sha256=#{certificate_sha256.inspect}, " \
+        "schema_sha256=#{schema_sha256.inspect}, " \
+        "sale=[redacted], xml=[redacted]>"
+    end
+    alias_method :to_s, :inspect
+
+    def pretty_print(pp)
+      pp.text(inspect)
+    end
+
     private
 
     def validate_uuid!(value)

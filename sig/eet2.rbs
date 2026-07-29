@@ -122,6 +122,9 @@ module Eet2
       protocol_version: String,
       schema_sha256: String
     ) -> void
+    def inspect: () -> String
+    def to_s: () -> String
+    def pretty_print: (untyped pp) -> void
   end
 
   class RequestIntegrityVerifier

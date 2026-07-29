@@ -34,6 +34,35 @@ RSpec.describe Eet2::PreparedRequest do
     expect { described_class.new(**attributes.merge(request_sha256: "a" * 64)) }.to raise_error(Eet2::ValidationError, /does not match/)
   end
 
+  it "redacts the signed XML from inspect, to_s, and pretty printing" do
+    require "pp"
+
+    signed_xml = PROJECT_ROOT.join("spec/fixtures/official/eet-v4_1/CZ00000019.eet.v4.req.xml").binread
+    prepared = described_class.new(
+      **attributes.merge(xml: signed_xml, request_sha256: Digest::SHA256.hexdigest(signed_xml))
+    )
+    renderings = [prepared.inspect, prepared.to_s, "#{prepared}", PP.pp(prepared, +"")]
+
+    renderings.each do |rendering|
+      expect(rendering).not_to include("SignatureValue")
+      expect(rendering).not_to include("BinarySecurityToken")
+      expect(rendering).not_to include("Envelope")
+      expect(rendering).not_to include(signed_xml[0, 64])
+      expect(rendering).to include(prepared.request_uuid)
+      expect(rendering).to include(prepared.request_sha256)
+      expect(rendering).to include("xml_bytesize=#{signed_xml.bytesize}")
+      expect(rendering).to include("[redacted]")
+      expect(rendering.length).to be < 1_000
+    end
+  end
+
+  it "keeps sale business data out of inspection output" do
+    prepared = described_class.new(**attributes)
+
+    expect(prepared.inspect).not_to include(prepared.sale.sequence_number)
+    expect(prepared.inspect).not_to include(prepared.sale.taxpayer_eic)
+  end
+
   it "rejects a request over the official 12 kB maximum" do
     oversized = "x" * (described_class::MAX_BYTES + 1)
 

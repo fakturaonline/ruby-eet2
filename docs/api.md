@@ -116,6 +116,12 @@ client additionally re-verifies the exact official schema digest, UUID, flags,
 Sale fields, canonical Body digest, embedded certificate digest, and RSA signature;
 corrupted persisted attempts fail before the transport is invoked.
 
+`PreparedRequest#inspect`, `#to_s`, and pretty printing return only non-sensitive
+metadata: request UUID, send time, flags, protocol version, XML byte size, and the
+four digests. The signed XML and the Sale are never rendered, so accidentally
+logging the object or capturing it in an exception context cannot leak the signed
+request. Read `#xml` explicitly when the bytes are genuinely needed.
+
 For a repeat submission of the same sale, preserve all six sale-identity fields,
 call `prepare` again to create a new message UUID, and use
 `first_submission: false`. The gem never decides when a repeat is lawful.
