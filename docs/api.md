@@ -90,6 +90,32 @@ client = Eet2::Client.production(
 )
 ```
 
+### Timeout ownership
+
+The three options above are **socket** timeouts owned by the transport, not a legal
+response window:
+
+| Layer | Owner | What it bounds |
+|---|---|---|
+| `open_timeout` | gem | TCP connect and TLS handshake |
+| `read_timeout` | gem | idle time between received chunks |
+| `write_timeout` | gem | idle time while sending the request |
+| response window | **host application** | the total wall-clock time the host is willing to wait for a decision |
+| attempt deadline | **host application** | job timeout, queue latency, repeat-submission policy |
+
+`read_timeout` is per read, so a peer that dribbles bytes can keep a connection open
+far longer than its value; the sum of the three socket timeouts is not a deadline
+either, because it excludes DNS resolution, queueing, and the host's own scheduling.
+The gem therefore never claims to enforce a response window. Enforce it once, in the
+host, around the whole attempt.
+
+As defense in depth the transport rejects `read_timeout` below
+`NetHttpTransport::MINIMUM_READ_TIMEOUT` (2 seconds) with a
+`TransportConfigurationError`. A shorter socket read timeout cannot serve any
+sensible response window and only manufactures `possibly_sent` outcomes, each of
+which is an ambiguous attempt the host has to reconcile by hand. The floor is a
+sanity check, not a policy: choosing the real window remains the host's job.
+
 Custom clocks, UUID generators, and transports are injectable for deterministic
 tests. A separate `receive_clock` may be injected to test certificate validity; it
 must represent independently observed local time and must never be derived from a

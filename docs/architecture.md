@@ -72,6 +72,19 @@ A failure before `Net::HTTP#request` is invoked is `not_sent`. Once request
 invocation begins, network failure is `possibly_sent` because the peer may have
 processed the sale even if the client did not receive its response.
 
+Socket timeouts are the only time bound the adapter owns. A legal or business
+response window spans DNS, queueing, and the host's own scheduling, so it can only
+be enforced by the host around the whole attempt. The adapter refuses a
+`read_timeout` under two seconds because such a value cannot serve any plausible
+window and merely converts avoidable slowness into ambiguous `possibly_sent`
+attempts.
+
+Every result derived from a received HTTP response also carries bounded
+`Response::ExchangeEvidence`: status, full-body SHA-256 and byte size, plus a 4 KiB
+head. It exists for non-200 and SOAP Fault bodies the gem refuses to parse, so
+support has a fixed-size, immutable trace without the gem ever retaining an
+unbounded response.
+
 ## Package and source integrity
 
 The gemspec is an explicit allowlist. Build verification extracts the package,

@@ -200,6 +200,29 @@ RSpec.describe Eet2::NetHttpTransport do
     expect { transport.call("xml") }.to raise_error(Eet2::TransportConfigurationError, /PreparedRequest/)
   end
 
+  it "refuses a read timeout that could never reach the two-second response window" do
+    expect(described_class::MINIMUM_READ_TIMEOUT).to eq(2)
+    expect { described_class.playground(read_timeout: 0.001) }.to raise_error(
+      Eet2::TransportConfigurationError,
+      /read_timeout must be at least 2 seconds/
+    )
+    expect { described_class.playground(read_timeout: 1.5) }.to raise_error(
+      Eet2::TransportConfigurationError,
+      /read_timeout must be at least 2 seconds/
+    )
+    expect { described_class.playground(read_timeout: 0) }.to raise_error(
+      Eet2::TransportConfigurationError,
+      /read_timeout must be a positive finite number/
+    )
+  end
+
+  it "accepts the minimum read timeout and applies it to the socket" do
+    described_class.new(endpoint: Eet2::Transport::PLAYGROUND_ENDPOINT, read_timeout: 2, http_factory: factory)
+      .call(prepared_request)
+
+    expect(http.read_timeout).to eq(2)
+  end
+
   it "revalidates the syntax and HTTPS shape of every configured allowlist entry" do
     stub_const("Eet2::Transport::ALLOWED_ENDPOINTS", ["not a URI", "http://example.test/eet"])
 

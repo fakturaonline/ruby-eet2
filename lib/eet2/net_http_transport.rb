@@ -12,6 +12,10 @@ module Eet2
     DEFAULT_OPEN_TIMEOUT = 5
     DEFAULT_READ_TIMEOUT = 10
     DEFAULT_WRITE_TIMEOUT = 5
+    # Defense in depth only. The host owns the legal response window; this floor
+    # merely makes a socket read timeout that could never reach it a configuration
+    # error instead of a silent source of avoidable `possibly_sent` outcomes.
+    MINIMUM_READ_TIMEOUT = 2
 
     NETWORK_ERRORS = [
       Timeout::Error,
@@ -45,7 +49,7 @@ module Eet2
     )
       @uri = parse_endpoint(endpoint)
       @open_timeout = positive_number(open_timeout, "open_timeout")
-      @read_timeout = positive_number(read_timeout, "read_timeout")
+      @read_timeout = read_timeout_seconds(read_timeout)
       @write_timeout = positive_number(write_timeout, "write_timeout")
       @max_response_bytes = positive_integer(max_response_bytes, "max_response_bytes")
       @http_factory = http_factory || ->(host, port) { Net::HTTP.new(host, port) }
@@ -100,6 +104,15 @@ module Eet2
       end
 
       value
+    end
+
+    def read_timeout_seconds(value)
+      number = positive_number(value, "read_timeout")
+      if number < MINIMUM_READ_TIMEOUT
+        raise TransportConfigurationError, "read_timeout must be at least #{MINIMUM_READ_TIMEOUT} seconds"
+      end
+
+      number
     end
 
     def positive_integer(value, name)

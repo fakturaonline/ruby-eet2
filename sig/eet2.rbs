@@ -325,6 +325,7 @@ module Eet2
     DEFAULT_OPEN_TIMEOUT: Integer
     DEFAULT_READ_TIMEOUT: Integer
     DEFAULT_WRITE_TIMEOUT: Integer
+    MINIMUM_READ_TIMEOUT: Integer
 
     def self.playground: (**untyped options) -> NetHttpTransport
     def self.production: (**untyped options) -> NetHttpTransport
