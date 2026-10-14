@@ -7,8 +7,8 @@ gemspec
 group :development, :test do
   gem "bundler-audit", "~> 0.9"
   gem "rake", "~> 13.2"
-  gem "rbs", "~> 3.9"
+  gem "rbs", "~> 4.1"
   gem "rspec", "~> 3.13"
-  gem "simplecov", "~> 0.22"
-  gem "standard", "~> 1.50"
+  gem "simplecov", "~> 1.2"
+  gem "standard", "~> 1.57"
 end
